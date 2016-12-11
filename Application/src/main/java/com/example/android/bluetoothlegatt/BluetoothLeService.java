@@ -54,10 +54,10 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
-//    public final static String ACCELEROMETER_DATA =
-//            "com.example.bluetooth.le.ACCELEROMETER_DATA";
-//    public final static String ACCELEROMETER_PERIOD =
-//            "com.example.bluetooth.le.ACCELEROMETER_PERIOD";
+    public final static String ACCELEROMETER_DATA =
+            "com.example.bluetooth.le.ACCELEROMETER_DATA";
+    public final static String ACCELEROMETER_PERIOD =
+            "com.example.bluetooth.le.ACCELEROMETER_PERIOD";
 
     public final static UUID UUID_ACCELEROMETER_MEASUREMENT =
             UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT);
@@ -122,7 +122,8 @@ public class BluetoothLeService extends Service {
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
         if (UUID_ACCELEROMETER_MEASUREMENT.equals(characteristic.getUuid())) {
-            intent.addCategory(GattAttributes.ACCELEROMETER_MEASUREMENT);
+            intent.addCategory(ACCELEROMETER_DATA);
+
             byte[] b = characteristic.getValue();
             byte[] x_bytes = new byte[2];
             byte[] y_bytes = new byte[2];
@@ -147,8 +148,11 @@ public class BluetoothLeService extends Service {
             Log.d(TAG, "Accelerometer data converted: x=" + accel_out[0] + " y=" + accel_out[1] + " z=" + accel_out[2]);
             intent.putExtra(EXTRA_DATA, accel_out);
         } else if (UUID_ACCELEROMETER_PERIOD.equals(characteristic.getUuid())) {
-            intent.addCategory(GattAttributes.ACCELEROMETER_PERIOD);
-            //TODO: Convert accelerometer period correctly
+            intent.addCategory(ACCELEROMETER_PERIOD);
+            byte[] b = characteristic.getValue();
+            short period = Utility.shortFromLittleEndianBytes(b);
+            Log.d(TAG, "Accelerometer period: "+period);
+            intent.putExtra(EXTRA_DATA, period);
         } else {
         // For all other profiles, writes the data formatted in HEX.
         final byte[] data = characteristic.getValue();

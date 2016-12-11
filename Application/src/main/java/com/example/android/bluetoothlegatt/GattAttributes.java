@@ -23,6 +23,7 @@ import java.util.HashMap;
  */
 public class GattAttributes {
     private static HashMap<String, String> attributes = new HashMap();
+    public static String ACCELEROMETER_SERVICE = "e95d0753-251d-470a-a062-fa1922dfa9a8";
     public static String ACCELEROMETER_MEASUREMENT = "e95dca4b-251d-470a-a062-fa1922dfa9a8";
     public static String ACCELEROMETER_PERIOD = "e95dfb24-251d-470a-a062-fa1922dfa9a8";
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
@@ -33,7 +34,7 @@ public class GattAttributes {
         attributes.put("00001801-0000-1000-8000-00805f9b34fb", "Generic Attribute Profile");
         attributes.put("0000180a-0000-1000-8000-00805f9b34fb", "Device Information Service");
         // Additional Services
-        attributes.put("e95d0753-251d-470a-a062-fa1922dfa9a8", "Accelerometer Service");
+        attributes.put(ACCELEROMETER_SERVICE, "Accelerometer Service");
         attributes.put("e95d9882-251d-470a-a062-fa1922dfa9a8", "Button Service");
         attributes.put("e95d6100-251d-470a-a062-fa1922dfa9a8", "Temperature Service");
         // Accelerometer Characteristics
@@ -42,7 +43,7 @@ public class GattAttributes {
         // Button Characteristics
         attributes.put("e95dda90-251d-470a-a062-fa1922dfa9a8", "Button A Data");
         attributes.put("e95dda91-251d-470a-a062-fa1922dfa9a8", "Button B Data");
-        // Temperature Characteristics
+//        // Temperature Characteristics
         attributes.put("e95d9250-251d-470a-a062-fa1922dfa9a8", "Temperature Measurement");
         attributes.put("e95d1b25-251d-470a-a062-fa1922dfa9a8", "Temperature Period");
         // Client config
