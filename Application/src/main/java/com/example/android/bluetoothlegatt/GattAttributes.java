@@ -28,14 +28,24 @@ public class GattAttributes {
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
 
     static {
-        // Sample Services.
+        // General Services
         attributes.put("00001800-0000-1000-8000-00805f9b34fb", "Generic Access Profile");
         attributes.put("00001801-0000-1000-8000-00805f9b34fb", "Generic Attribute Profile");
         attributes.put("0000180a-0000-1000-8000-00805f9b34fb", "Device Information Service");
+        // Additional Services
         attributes.put("e95d0753-251d-470a-a062-fa1922dfa9a8", "Accelerometer Service");
-        // Sample Characteristics.
+        attributes.put("e95d9882-251d-470a-a062-fa1922dfa9a8", "Button Service");
+        attributes.put("e95d6100-251d-470a-a062-fa1922dfa9a8", "Temperature Service");
+        // Accelerometer Characteristics
         attributes.put(ACCELEROMETER_MEASUREMENT, "Accelerometer Measurement");
         attributes.put(ACCELEROMETER_PERIOD, "Accelerometer Period");
+        // Button Characteristics
+        attributes.put("e95dda90-251d-470a-a062-fa1922dfa9a8", "Button A Data");
+        attributes.put("e95dda91-251d-470a-a062-fa1922dfa9a8", "Button B Data");
+        // Temperature Characteristics
+        attributes.put("e95d9250-251d-470a-a062-fa1922dfa9a8", "Temperature Measurement");
+        attributes.put("e95d1b25-251d-470a-a062-fa1922dfa9a8", "Temperature Period");
+        // Client config
         attributes.put(CLIENT_CHARACTERISTIC_CONFIG, "Client Configuration Configuration Descriptor");
     }
 

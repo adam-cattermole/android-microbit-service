@@ -17,15 +17,7 @@
 package com.example.android.bluetoothlegatt;
 
 import android.app.Service;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothProfile;
+import android.bluetooth.*;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
@@ -62,9 +54,16 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
+//    public final static String ACCELEROMETER_DATA =
+//            "com.example.bluetooth.le.ACCELEROMETER_DATA";
+//    public final static String ACCELEROMETER_PERIOD =
+//            "com.example.bluetooth.le.ACCELEROMETER_PERIOD";
 
     public final static UUID UUID_ACCELEROMETER_MEASUREMENT =
             UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT);
+
+    public final static UUID UUID_ACCELEROMETER_PERIOD =
+            UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD);
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -123,11 +122,33 @@ public class BluetoothLeService extends Service {
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
         if (UUID_ACCELEROMETER_MEASUREMENT.equals(characteristic.getUuid())) {
-            int flag = characteristic.getProperties();
-            int format = BluetoothGattCharacteristic.FORMAT_UINT8;
-            int accelerometerData = characteristic.getIntValue(format, 0);
-            Log.d(TAG, String.format("Received A data: %d", accelerometerData));
-            intent.putExtra(EXTRA_DATA, String.valueOf(accelerometerData));
+            intent.addCategory(GattAttributes.ACCELEROMETER_MEASUREMENT);
+            byte[] b = characteristic.getValue();
+            byte[] x_bytes = new byte[2];
+            byte[] y_bytes = new byte[2];
+            byte[] z_bytes = new byte[2];
+            System.arraycopy(b, 0, x_bytes, 0, 2);
+            System.arraycopy(b, 2, y_bytes, 0, 2);
+            System.arraycopy(b, 4, z_bytes, 0, 2);
+            short raw_x = Utility.shortFromLittleEndianBytes(x_bytes);
+            short raw_y = Utility.shortFromLittleEndianBytes(y_bytes);
+            short raw_z = Utility.shortFromLittleEndianBytes(z_bytes);
+            Log.d(TAG, "Accelerometer Data received: x=" + raw_x + " y=" + raw_y + " z=" + raw_z);
+
+            // range is -1024 : +1024
+            // Starting with the LED display face up and level (perpendicular to gravity) and edge connector towards your body:
+            // A negative X value means tilting left, a positive X value means tilting right
+            // A negative Y value means tilting away from you, a positive Y value means tilting towards you
+            // A negative Z value means ?
+            float[] accel_out = new float[3];
+            accel_out[0] = raw_x / 1000f;
+            accel_out[1] = raw_y / 1000f;
+            accel_out[2] = raw_z / 1000f;
+            Log.d(TAG, "Accelerometer data converted: x=" + accel_out[0] + " y=" + accel_out[1] + " z=" + accel_out[2]);
+            intent.putExtra(EXTRA_DATA, accel_out);
+        } else if (UUID_ACCELEROMETER_PERIOD.equals(characteristic.getUuid())) {
+            intent.addCategory(GattAttributes.ACCELEROMETER_PERIOD);
+            //TODO: Convert accelerometer period correctly
         } else {
         // For all other profiles, writes the data formatted in HEX.
         final byte[] data = characteristic.getValue();

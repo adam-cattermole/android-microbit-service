@@ -129,7 +129,15 @@ public class DeviceControlActivity extends Activity {
                     Log.d(TAG, "Accelerometer service not found");
                 }
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                if (intent.hasCategory(GattAttributes.ACCELEROMETER_MEASUREMENT)) {
+                    //TODO: handle accelerometer data
+                    float[] data = intent.getFloatArrayExtra(BluetoothLeService.EXTRA_DATA);
+                    displayData("x=" + data[0] + " y=" + data[1] + " z=" + data[2]);
+                } else if (intent.hasCategory(GattAttributes.ACCELEROMETER_PERIOD)) {
+                    //TODO: Display the period of sampling
+                } else {
+                    displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                }
             }
         }
     };
