@@ -1,7 +1,9 @@
-package com.example.android.bluetoothlegatt;
+package com.example.android.bluetoothlegatt.ble;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.util.Log;
+import com.example.android.bluetoothlegatt.ble.BluetoothLeService;
+import com.example.android.bluetoothlegatt.ui.DeviceControlActivity;
 
 /**
  * Created by Adam Cattermole on 10/12/2016.

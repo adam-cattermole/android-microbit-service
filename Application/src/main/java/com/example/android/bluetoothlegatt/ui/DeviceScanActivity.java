@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.bluetoothlegatt;
+package com.example.android.bluetoothlegatt.ui;
 
 import android.Manifest;
 import android.app.Activity;
@@ -39,6 +39,7 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.example.android.bluetoothlegatt.R;
 
 import java.util.ArrayList;
 

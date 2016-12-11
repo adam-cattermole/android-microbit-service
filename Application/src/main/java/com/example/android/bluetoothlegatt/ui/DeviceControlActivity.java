@@ -14,18 +14,12 @@
  * limitations under the License.
  */
 
-package com.example.android.bluetoothlegatt;
+package com.example.android.bluetoothlegatt.ui;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
-import android.os.AsyncTask;
+import android.content.*;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -36,6 +30,12 @@ import android.view.View;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
+import com.example.android.bluetoothlegatt.ble.GattAttributes;
+import com.example.android.bluetoothlegatt.mqtt.MqttConfig;
+import com.example.android.bluetoothlegatt.R;
+import com.example.android.bluetoothlegatt.Utility;
+import com.example.android.bluetoothlegatt.ble.BluetoothLeService;
+import org.eclipse.paho.android.service.MqttAndroidClient;
 
 import java.util.*;
 
@@ -53,7 +53,7 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
 
-    private SamplerThread samplerThread;
+    private MqttAndroidClient mMqttAndroidClient;
 
     private TextView mConnectionState;
     private TextView mDataField;
@@ -153,7 +153,6 @@ public class DeviceControlActivity extends Activity {
                         }
                     }, 3000);
 
-
                     //TODO: remove sampler if no longer in use
 //                    samplerThread = new SamplerThread(mBluetoothLeService, accelerometerCharacteristic);
 //                    samplerThread.start();
@@ -235,6 +234,9 @@ public class DeviceControlActivity extends Activity {
         getActionBar().setDisplayHomeAsUpEnabled(true);
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
+
+        // MQTT Setup
+        mMqttAndroidClient = new MqttAndroidClient(getApplicationContext(), MqttConfig.SERVER_URI, MqttConfig.CLIENT_ID);
     }
 
     @Override
