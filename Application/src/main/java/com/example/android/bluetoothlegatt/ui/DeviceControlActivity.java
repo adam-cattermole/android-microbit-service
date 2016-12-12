@@ -27,9 +27,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ExpandableListView;
-import android.widget.SimpleExpandableListAdapter;
-import android.widget.TextView;
+import android.widget.*;
 import com.example.android.bluetoothlegatt.R;
 import com.example.android.bluetoothlegatt.Utility;
 import com.example.android.bluetoothlegatt.ble.BluetoothLeService;
@@ -62,11 +60,17 @@ public class DeviceControlActivity extends Activity {
 
     //BLE Variables
     private TextView mBleConnectState;
-    private TextView mDataField;
-    private TextView mPeriodField;
+    private TextView mAccellData;
+    private TextView mAccellPeriod;
+    private TextView mTempData;
+    private TextView mTempPeriod;
+    private TextView mButtonAData;
+    private TextView mButtonBData;
     private String mDeviceName;
     private String mDeviceAddress;
-    private ExpandableListView mGattServicesList;
+//    private ExpandableListView mGattServicesList;
+    private LinearLayout mGattServicesList;
+    private ListAdapter mGattServicesListAdapter;
     private BluetoothLeService mBluetoothLeService;
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
@@ -166,14 +170,21 @@ public class DeviceControlActivity extends Activity {
                     Log.d(TAG, "Accelerometer service not found");
                 }
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_DATA)) {
-                    //TODO: handle accelerometer data with MQTT
+                if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_MEASUREMENT)) {
                     float[] data = intent.getFloatArrayExtra(BluetoothLeService.EXTRA_DATA);
                     String strData = String.format(Locale.UK, "(%.3f,%.3f,%.3f)", data[0], data[1], data[2]);
                     displayData(strData);
                     publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
                 } else if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_PERIOD)) {
                     displayPeriod(intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
+                } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT)) {
+                    //TODO: do something with the temperature data
+                } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_PERIOD)) {
+                    //TODO: do something with the temp period
+                } else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
+                    //TODO: publish button data
+                } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
+                    //TODO: publish button data
                 } else {
                     displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 }
@@ -181,44 +192,79 @@ public class DeviceControlActivity extends Activity {
         }
     };
 
-    // If a given GATT characteristic is selected, check for supported features.  This sample
-    // demonstrates 'Read' and 'Notify' features.  See
-    // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
-    // list of supported characteristic features.
-    private final ExpandableListView.OnChildClickListener servicesListClickListner =
-            new ExpandableListView.OnChildClickListener() {
-                @Override
-                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
-                                            int childPosition, long id) {
-                    if (mGattCharacteristics != null) {
-                        final BluetoothGattCharacteristic characteristic =
-                                mGattCharacteristics.get(groupPosition).get(childPosition);
-                        final int charaProp = characteristic.getProperties();
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
-                            // If there is an active notification on a characteristic, clear
-                            // it first so it doesn't update the data field on the user interface.
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
-                                        mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
-                            }
-                            mBluetoothLeService.readCharacteristic(characteristic);
-                        }
-                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-                            mNotifyCharacteristic = characteristic;
-                            mBluetoothLeService.setCharacteristicNotification(
-                                    characteristic, true);
-                        }
-                        return true;
-                    }
-                    return false;
-                }
+    private final MqttCallbackExtended mMqttCallbackExtended = new MqttCallbackExtended() {
+        @Override
+        public void connectComplete(boolean reconnect, String serverURI) {
+
+            if (reconnect) {
+                Log.d(TAG, "MQTT reconnected: " + serverURI);
+                updateMqttConnectState(R.string.connected);
+                // Because Clean Session is true, we need to re-subscribe
+//                    subscribeToTopic();
+            } else {
+                Log.d(TAG, "MQTT connected: " + serverURI);
+                updateMqttConnectState(R.string.connected);
+            }
+        }
+
+        @Override
+        public void connectionLost(Throwable cause) {
+            Log.d(TAG, "MQTT disconnected: " + MqttConfig.SERVER_URI);
+            updateMqttConnectState(R.string.disconnected);
+        }
+
+        @Override
+        public void messageArrived(String topic, MqttMessage message) throws Exception {
+            Log.d(TAG,"MQTT message: " + new String(message.getPayload()));
+        }
+
+        @Override
+        public void deliveryComplete(IMqttDeliveryToken token) {
+
+        }
     };
 
+
+        //TODO: remove - no longer interact with gatt services manually
+//    // If a given GATT characteristic is selected, check for supported features.  This sample
+//    // demonstrates 'Read' and 'Notify' features.  See
+//    // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
+//    // list of supported characteristic features.
+//    private final ExpandableListView.OnChildClickListener servicesListClickListner =
+//            new ExpandableListView.OnChildClickListener() {
+//                @Override
+//                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
+//                                            int childPosition, long id) {
+//                    if (mGattCharacteristics != null) {
+//                        final BluetoothGattCharacteristic characteristic =
+//                                mGattCharacteristics.get(groupPosition).get(childPosition);
+//                        final int charaProp = characteristic.getProperties();
+//                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
+//                            // If there is an active notification on a characteristic, clear
+//                            // it first so it doesn't update the data field on the user interface.
+//                            if (mNotifyCharacteristic != null) {
+//                                mBluetoothLeService.setCharacteristicNotification(
+//                                        mNotifyCharacteristic, false);
+//                                mNotifyCharacteristic = null;
+//                            }
+//                            mBluetoothLeService.readCharacteristic(characteristic);
+//                        }
+//                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
+//                            mNotifyCharacteristic = characteristic;
+//                            mBluetoothLeService.setCharacteristicNotification(
+//                                    characteristic, true);
+//                        }
+//                        return true;
+//                    }
+//                    return false;
+//                }
+//    };
+
     private void clearUI() {
-        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
-        mDataField.setText(R.string.no_data);
-        mPeriodField.setText(R.string.no_data);
+        mGattServicesList.removeAllViews();
+//        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
+        mAccellData.setText(R.string.no_data);
+        mAccellPeriod.setText(R.string.no_data);
     }
 
     @Override
@@ -232,11 +278,12 @@ public class DeviceControlActivity extends Activity {
 
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(mDeviceAddress);
-        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
-        mGattServicesList.setOnChildClickListener(servicesListClickListner);
+//        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
+        mGattServicesList = (LinearLayout) findViewById(R.id.gatt_services_list);
+//        mGattServicesList.setOnChildClickListener(servicesListClickListner);
         mBleConnectState = (TextView) findViewById(R.id.ble_connect_state);
-        mDataField = (TextView) findViewById(R.id.data_value);
-        mPeriodField = (TextView) findViewById(R.id.period_value);
+        mAccellData = (TextView) findViewById(R.id.accel_data_value);
+        mAccellPeriod = (TextView) findViewById(R.id.accel_period_value);
 
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
@@ -247,66 +294,48 @@ public class DeviceControlActivity extends Activity {
         ((TextView) findViewById(R.id.server_address)).setText(MqttConfig.SERVER_URI);
         mMqttConnectState = (TextView) findViewById(R.id.mqtt_connect_state);
         mMqttAndroidClient = new MqttAndroidClient(getApplicationContext(), MqttConfig.SERVER_URI, MqttConfig.CLIENT_ID);
-        mMqttAndroidClient.setCallback(new MqttCallbackExtended() {
-            @Override
-            public void connectComplete(boolean reconnect, String serverURI) {
+        mMqttAndroidClient.setCallback(mMqttCallbackExtended);
+    }
 
-                if (reconnect) {
-                    Log.d(TAG, "MQTT reconnected: " + serverURI);
-                    updateMqttConnectState(R.string.connected);
-                    // Because Clean Session is true, we need to re-subscribe
+
+    public void mqttConnect() {
+        if (!mMqttAndroidClient.isConnected()) {
+            MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
+            mqttConnectOptions.setAutomaticReconnect(true);
+            mqttConnectOptions.setCleanSession(false);
+            try {
+                //addToHistory("Connecting to " + serverUri);
+                mMqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
+                    @Override
+                    public void onSuccess(IMqttToken asyncActionToken) {
+                        DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                        disconnectedBufferOptions.setBufferEnabled(true);
+                        disconnectedBufferOptions.setBufferSize(100);
+                        disconnectedBufferOptions.setPersistBuffer(false);
+                        disconnectedBufferOptions.setDeleteOldestMessages(false);
+                        mMqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
 //                    subscribeToTopic();
-                } else {
-                    Log.d(TAG, "MQTT connected: " + serverURI);
-                    updateMqttConnectState(R.string.connected);
-                }
+                    }
+
+                    @Override
+                    public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                        Log.e(TAG, "MQTT connect failed: " + MqttConfig.SERVER_URI);
+                    }
+                });
+            } catch (MqttException ex) {
+                ex.printStackTrace();
             }
-
-            @Override
-            public void connectionLost(Throwable cause) {
-                Log.d(TAG, "MQTT disconnected: " + MqttConfig.SERVER_URI);
-                updateMqttConnectState(R.string.disconnected);
-            }
-
-            @Override
-            public void messageArrived(String topic, MqttMessage message) throws Exception {
-                Log.d(TAG,"MQTT message: " + new String(message.getPayload()));
-            }
-
-            @Override
-            public void deliveryComplete(IMqttDeliveryToken token) {
-
-            }
-        });
-
-        MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
-        mqttConnectOptions.setAutomaticReconnect(true);
-        mqttConnectOptions.setCleanSession(false);
-        try {
-            //addToHistory("Connecting to " + serverUri);
-            mMqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
-                @Override
-                public void onSuccess(IMqttToken asyncActionToken) {
-                    DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
-                    disconnectedBufferOptions.setBufferEnabled(true);
-                    disconnectedBufferOptions.setBufferSize(100);
-                    disconnectedBufferOptions.setPersistBuffer(false);
-                    disconnectedBufferOptions.setDeleteOldestMessages(false);
-                    mMqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-//                    subscribeToTopic();
-                }
-
-                @Override
-                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.e(TAG, "MQTT connect failed: " + MqttConfig.SERVER_URI);
-                }
-            });
-
-
-        } catch (MqttException ex){
-            ex.printStackTrace();
         }
+    }
 
+    public void mqttDisconnect() {
+        if (mMqttAndroidClient.isConnected()) {
+            try {
+                mMqttAndroidClient.disconnect();
+            } catch (MqttException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -317,6 +346,7 @@ public class DeviceControlActivity extends Activity {
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
         }
+        mqttConnect();
     }
 
     @Override
@@ -350,9 +380,11 @@ public class DeviceControlActivity extends Activity {
         switch(item.getItemId()) {
             case R.id.menu_connect:
                 mBluetoothLeService.connect(mDeviceAddress);
+                mqttConnect();
                 return true;
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();
+                mqttDisconnect();
                 return true;
             case android.R.id.home:
                 onBackPressed();
@@ -381,13 +413,13 @@ public class DeviceControlActivity extends Activity {
 
     private void displayData(String data) {
         if (data != null) {
-            mDataField.setText(data);
+            mAccellData.setText(data);
         }
     }
 
     private void displayPeriod(short period) {
         if (period > 0) {
-            mPeriodField.setText(String.format(Locale.UK,"%d ms", period));
+            mAccellPeriod.setText(String.format(Locale.UK,"%d ms", period));
         }
     }
 
@@ -434,18 +466,18 @@ public class DeviceControlActivity extends Activity {
             gattCharacteristicData.add(gattCharacteristicGroupData);
         }
 
-        SimpleExpandableListAdapter gattServiceAdapter = new SimpleExpandableListAdapter(
+        mGattServicesListAdapter = new SimpleAdapter (
                 this,
                 gattServiceData,
-                android.R.layout.simple_expandable_list_item_2,
-                new String[] {LIST_NAME, LIST_UUID},
-                new int[] { android.R.id.text1, android.R.id.text2 },
-                gattCharacteristicData,
-                android.R.layout.simple_expandable_list_item_2,
+                android.R.layout.simple_list_item_2,
                 new String[] {LIST_NAME, LIST_UUID},
                 new int[] { android.R.id.text1, android.R.id.text2 }
         );
-        mGattServicesList.setAdapter(gattServiceAdapter);
+        for (int i = 0; i < mGattServicesListAdapter.getCount(); i++) {
+            View item = mGattServicesListAdapter.getView(i, null, null);
+            mGattServicesList.addView(item);
+        }
+//        mGattServicesList.setAdapter(gattServiceAdapter);
     }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
@@ -455,7 +487,7 @@ public class DeviceControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
         // Additional categories
-        intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_DATA);
+        intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_MEASUREMENT);
         intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_PERIOD);
         return intentFilter;
     }

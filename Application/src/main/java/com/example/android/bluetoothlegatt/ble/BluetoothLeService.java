@@ -55,16 +55,32 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
-    public final static String ACCELEROMETER_DATA =
-            "com.example.bluetooth.le.ACCELEROMETER_DATA";
+
+    public final static String ACCELEROMETER_MEASUREMENT =
+            "com.example.bluetooth.le.ACCELEROMETER_MEASUREMENT";
     public final static String ACCELEROMETER_PERIOD =
             "com.example.bluetooth.le.ACCELEROMETER_PERIOD";
+    public final static String TEMPERATURE_MEASUREMENT =
+            "com.example.bluetooth.le.TEMPERATURE_MEASUREMENT";
+    public final static String TEMPERATURE_PERIOD =
+            "com.example.bluetooth.le.TEMPERATURE_PERIOD";
+    public final static String BUTTON_A_MEASUREMENT =
+            "com.example.bluetooth.le.BUTTON_A_MEASUREMENT";
+    public final static String BUTTON_B_MEASUREMENT =
+            "com.example.bluetooth.le.BUTTON_B_MEASUREMENT";
 
-    public final static UUID UUID_ACCELEROMETER_MEASUREMENT =
-            UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT);
-
-    public final static UUID UUID_ACCELEROMETER_PERIOD =
-            UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD);
+//    public final static UUID UUID_ACCELEROMETER_MEASUREMENT =
+//            UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT);
+//    public final static UUID UUID_ACCELEROMETER_PERIOD =
+//            UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD);
+//    public final static UUID UUID_TEMPERATURE_MEASUREMENT =
+//            UUID.fromString(GattAttributes.TEMPERATURE_MEASUREMENT);
+//    public final static UUID UUID_TEMPERATURE_PERIOD =
+//            UUID.fromString(GattAttributes.TEMPERATURE_PERIOD);
+//    public final static UUID UUID_BUTTON_A_MEASUREMENT =
+//            UUID.fromString(GattAttributes.BUTTON_A_MEASUREMENT);
+//    public final static UUID UUID_BUTTON_B_MEASUREMENT =
+//            UUID.fromString(GattAttributes.BUTTON_B_MEASUREMENT);
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -122,8 +138,8 @@ public class BluetoothLeService extends Service {
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
-        if (UUID_ACCELEROMETER_MEASUREMENT.equals(characteristic.getUuid())) {
-            intent.addCategory(ACCELEROMETER_DATA);
+        if (UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT).equals(characteristic.getUuid())) {
+            intent.addCategory(ACCELEROMETER_MEASUREMENT);
 
             byte[] b = characteristic.getValue();
             byte[] x_bytes = new byte[2];
@@ -148,22 +164,34 @@ public class BluetoothLeService extends Service {
             accel_out[2] = raw_z / 1000f;
             Log.d(TAG, "Accelerometer data converted: x=" + accel_out[0] + " y=" + accel_out[1] + " z=" + accel_out[2]);
             intent.putExtra(EXTRA_DATA, accel_out);
-        } else if (UUID_ACCELEROMETER_PERIOD.equals(characteristic.getUuid())) {
+        } else if (UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD).equals(characteristic.getUuid())) {
             intent.addCategory(ACCELEROMETER_PERIOD);
             byte[] b = characteristic.getValue();
             short period = Utility.shortFromLittleEndianBytes(b);
             Log.d(TAG, "Accelerometer period: "+period);
             intent.putExtra(EXTRA_DATA, period);
+        } else if (UUID.fromString(GattAttributes.TEMPERATURE_MEASUREMENT).equals(characteristic.getUuid())) {
+            intent.addCategory(TEMPERATURE_MEASUREMENT);
+            //TODO: HANDLE TEMPERATURE MEASUREMENTS
+        } else if (UUID.fromString(GattAttributes.TEMPERATURE_PERIOD).equals(characteristic.getUuid())) {
+            intent.addCategory(TEMPERATURE_PERIOD);
+            //TODO: HANDLE TEMPERATURE PERIOD
+        } else if (UUID.fromString(GattAttributes.BUTTON_A_MEASUREMENT).equals(characteristic.getUuid())) {
+            intent.addCategory(BUTTON_A_MEASUREMENT);
+            //TODO: HANDLE BUTTON A DATA
+        } else if (UUID.fromString(GattAttributes.BUTTON_B_MEASUREMENT).equals(characteristic.getUuid())) {
+            intent.addCategory(BUTTON_B_MEASUREMENT);
+            //TODO: HANDLE BUTTON B DATA
         } else {
-        // For all other profiles, writes the data formatted in HEX.
-        final byte[] data = characteristic.getValue();
-        if (data != null && data.length > 0) {
-            final StringBuilder stringBuilder = new StringBuilder(data.length);
-            for(byte byteChar : data)
-                stringBuilder.append(String.format("%02X ", byteChar));
-            intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
-                    stringBuilder.toString());
-            Log.d(TAG, "Received data: "+stringBuilder.toString());
+            // For all other profiles, writes the data formatted in HEX.
+            final byte[] data = characteristic.getValue();
+            if (data != null && data.length > 0) {
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+                for(byte byteChar : data)
+                    stringBuilder.append(String.format("%02X ", byteChar));
+                intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
+                        stringBuilder.toString());
+                Log.d(TAG, "Received data: "+stringBuilder.toString());
             }
         }
         sendBroadcast(intent);
@@ -325,8 +353,11 @@ public class BluetoothLeService extends Service {
             Log.w(TAG, "BluetoothAdapter not initialized");
             return;
         }
-        // This is specific to the accelerometer service.
-        if (UUID_ACCELEROMETER_MEASUREMENT.equals(characteristic.getUuid())) {
+        UUID serviceUUID = characteristic.getService().getUuid();
+        // This is specific to the microbit services
+        if (serviceUUID.equals(UUID.fromString(GattAttributes.ACCELEROMETER_SERVICE)) ||
+                serviceUUID.equals(UUID.fromString(GattAttributes.TEMPERATURE_SERVICE)) ||
+                serviceUUID.equals(UUID.fromString(GattAttributes.BUTTON_SERVICE))) {
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                     UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);

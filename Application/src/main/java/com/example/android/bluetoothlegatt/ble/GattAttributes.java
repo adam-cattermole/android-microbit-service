@@ -26,6 +26,14 @@ public class GattAttributes {
     public static String ACCELEROMETER_SERVICE = "e95d0753-251d-470a-a062-fa1922dfa9a8";
     public static String ACCELEROMETER_MEASUREMENT = "e95dca4b-251d-470a-a062-fa1922dfa9a8";
     public static String ACCELEROMETER_PERIOD = "e95dfb24-251d-470a-a062-fa1922dfa9a8";
+
+    public static String TEMPERATURE_SERVICE = "e95d6100-251d-470a-a062-fa1922dfa9a8";
+    public static String TEMPERATURE_MEASUREMENT = "e95d9250-251d-470a-a062-fa1922dfa9a8";
+    public static String TEMPERATURE_PERIOD = "e95d1b25-251d-470a-a062-fa1922dfa9a8";
+
+    public static String BUTTON_SERVICE = "e95d9882-251d-470a-a062-fa1922dfa9a8";
+    public static String BUTTON_A_MEASUREMENT = "e95dda90-251d-470a-a062-fa1922dfa9a8";
+    public static String BUTTON_B_MEASUREMENT ="e95dda91-251d-470a-a062-fa1922dfa9a8";
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
 
     static {
@@ -35,17 +43,18 @@ public class GattAttributes {
         attributes.put("0000180a-0000-1000-8000-00805f9b34fb", "Device Information Service");
         // Additional Services
         attributes.put(ACCELEROMETER_SERVICE, "Accelerometer Service");
-        attributes.put("e95d9882-251d-470a-a062-fa1922dfa9a8", "Button Service");
-        attributes.put("e95d6100-251d-470a-a062-fa1922dfa9a8", "Temperature Service");
+        attributes.put(TEMPERATURE_SERVICE, "Temperature Service");
+        attributes.put(BUTTON_SERVICE, "Button Service");
+
         // Accelerometer Characteristics
         attributes.put(ACCELEROMETER_MEASUREMENT, "Accelerometer Measurement");
         attributes.put(ACCELEROMETER_PERIOD, "Accelerometer Period");
+        // Temperature Characteristics
+        attributes.put(TEMPERATURE_MEASUREMENT, "Temperature Measurement");
+        attributes.put(TEMPERATURE_PERIOD, "Temperature Period");
         // Button Characteristics
-        attributes.put("e95dda90-251d-470a-a062-fa1922dfa9a8", "Button A Data");
-        attributes.put("e95dda91-251d-470a-a062-fa1922dfa9a8", "Button B Data");
-//        // Temperature Characteristics
-        attributes.put("e95d9250-251d-470a-a062-fa1922dfa9a8", "Temperature Measurement");
-        attributes.put("e95d1b25-251d-470a-a062-fa1922dfa9a8", "Temperature Period");
+        attributes.put(BUTTON_A_MEASUREMENT, "Button A Data");
+        attributes.put(BUTTON_B_MEASUREMENT, "Button B Data");
         // Client config
         attributes.put(CLIENT_CHARACTERISTIC_CONFIG, "Client Configuration Configuration Descriptor");
     }
