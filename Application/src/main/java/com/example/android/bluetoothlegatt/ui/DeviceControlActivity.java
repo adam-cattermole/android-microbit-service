@@ -30,12 +30,13 @@ import android.view.View;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
-import com.example.android.bluetoothlegatt.ble.GattAttributes;
-import com.example.android.bluetoothlegatt.mqtt.MqttConfig;
 import com.example.android.bluetoothlegatt.R;
 import com.example.android.bluetoothlegatt.Utility;
 import com.example.android.bluetoothlegatt.ble.BluetoothLeService;
+import com.example.android.bluetoothlegatt.ble.GattAttributes;
+import com.example.android.bluetoothlegatt.mqtt.MqttConfig;
 import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.*;
 
 import java.util.*;
 
@@ -53,9 +54,14 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
 
-    private MqttAndroidClient mMqttAndroidClient;
 
-    private TextView mConnectionState;
+    //MqttVariable
+    private MqttAndroidClient mMqttAndroidClient;
+    private TextView mMqttConnectState;
+    private boolean mMqttConnected = false;
+
+    //BLE Variables
+    private TextView mBleConnectState;
     private TextView mDataField;
     private TextView mPeriodField;
     private String mDeviceName;
@@ -64,7 +70,7 @@ public class DeviceControlActivity extends Activity {
     private BluetoothLeService mBluetoothLeService;
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
             new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
-    private boolean mConnected = false;
+    private boolean mBleConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
 
     private final String LIST_NAME = "NAME";
@@ -101,12 +107,12 @@ public class DeviceControlActivity extends Activity {
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
-                mConnected = true;
-                updateConnectionState(R.string.connected);
+                mBleConnected = true;
+                updateBleConnectState(R.string.connected);
                 invalidateOptionsMenu();
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
-                mConnected = false;
-                updateConnectionState(R.string.disconnected);
+                mBleConnected = false;
+                updateBleConnectState(R.string.disconnected);
                 invalidateOptionsMenu();
                 clearUI();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
@@ -163,7 +169,9 @@ public class DeviceControlActivity extends Activity {
                 if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_DATA)) {
                     //TODO: handle accelerometer data with MQTT
                     float[] data = intent.getFloatArrayExtra(BluetoothLeService.EXTRA_DATA);
-                    displayData("x:" + data[0] + " y:" + data[1] + " z:" + data[2]);
+                    String strData = String.format(Locale.UK, "(%.3f,%.3f,%.3f)", data[0], data[1], data[2]);
+                    displayData(strData);
+                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
                 } else if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_PERIOD)) {
                     displayPeriod(intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else {
@@ -226,7 +234,7 @@ public class DeviceControlActivity extends Activity {
         ((TextView) findViewById(R.id.device_address)).setText(mDeviceAddress);
         mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
         mGattServicesList.setOnChildClickListener(servicesListClickListner);
-        mConnectionState = (TextView) findViewById(R.id.connection_state);
+        mBleConnectState = (TextView) findViewById(R.id.ble_connect_state);
         mDataField = (TextView) findViewById(R.id.data_value);
         mPeriodField = (TextView) findViewById(R.id.period_value);
 
@@ -236,7 +244,69 @@ public class DeviceControlActivity extends Activity {
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
         // MQTT Setup
+        ((TextView) findViewById(R.id.server_address)).setText(MqttConfig.SERVER_URI);
+        mMqttConnectState = (TextView) findViewById(R.id.mqtt_connect_state);
         mMqttAndroidClient = new MqttAndroidClient(getApplicationContext(), MqttConfig.SERVER_URI, MqttConfig.CLIENT_ID);
+        mMqttAndroidClient.setCallback(new MqttCallbackExtended() {
+            @Override
+            public void connectComplete(boolean reconnect, String serverURI) {
+
+                if (reconnect) {
+                    Log.d(TAG, "MQTT reconnected: " + serverURI);
+                    updateMqttConnectState(R.string.connected);
+                    // Because Clean Session is true, we need to re-subscribe
+//                    subscribeToTopic();
+                } else {
+                    Log.d(TAG, "MQTT connected: " + serverURI);
+                    updateMqttConnectState(R.string.connected);
+                }
+            }
+
+            @Override
+            public void connectionLost(Throwable cause) {
+                Log.d(TAG, "MQTT disconnected: " + MqttConfig.SERVER_URI);
+                updateMqttConnectState(R.string.disconnected);
+            }
+
+            @Override
+            public void messageArrived(String topic, MqttMessage message) throws Exception {
+                Log.d(TAG,"MQTT message: " + new String(message.getPayload()));
+            }
+
+            @Override
+            public void deliveryComplete(IMqttDeliveryToken token) {
+
+            }
+        });
+
+        MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
+        mqttConnectOptions.setAutomaticReconnect(true);
+        mqttConnectOptions.setCleanSession(false);
+        try {
+            //addToHistory("Connecting to " + serverUri);
+            mMqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
+                @Override
+                public void onSuccess(IMqttToken asyncActionToken) {
+                    DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
+                    disconnectedBufferOptions.setBufferEnabled(true);
+                    disconnectedBufferOptions.setBufferSize(100);
+                    disconnectedBufferOptions.setPersistBuffer(false);
+                    disconnectedBufferOptions.setDeleteOldestMessages(false);
+                    mMqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
+//                    subscribeToTopic();
+                }
+
+                @Override
+                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                    Log.e(TAG, "MQTT connect failed: " + MqttConfig.SERVER_URI);
+                }
+            });
+
+
+        } catch (MqttException ex){
+            ex.printStackTrace();
+        }
+
     }
 
     @Override
@@ -265,7 +335,7 @@ public class DeviceControlActivity extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.gatt_services, menu);
-        if (mConnected) {
+        if (mBleConnected) {
             menu.findItem(R.id.menu_connect).setVisible(false);
             menu.findItem(R.id.menu_disconnect).setVisible(true);
         } else {
@@ -291,11 +361,20 @@ public class DeviceControlActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void updateConnectionState(final int resourceId) {
+    private void updateBleConnectState(final int resourceId) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mConnectionState.setText(resourceId);
+                mBleConnectState.setText(resourceId);
+            }
+        });
+    }
+
+    private void updateMqttConnectState(final int resourceId) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mMqttConnectState.setText(resourceId);
             }
         });
     }
@@ -379,5 +458,21 @@ public class DeviceControlActivity extends Activity {
         intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_DATA);
         intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_PERIOD);
         return intentFilter;
+    }
+
+    public void publishMqttMessage(String topic, String message){
+        try {
+            MqttMessage m = new MqttMessage();
+            m.setPayload(message.getBytes());
+            mMqttAndroidClient.publish(topic, m);
+
+//            For some reason the buffer is set to null - could be worth figuring this out
+//            if (!mMqttAndroidClient.isConnected()) {
+//                Log.d(TAG, mMqttAndroidClient.getBufferedMessageCount() + " messages in buffer.");
+//            }
+        } catch (MqttException e) {
+            System.err.println("Error Publishing: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

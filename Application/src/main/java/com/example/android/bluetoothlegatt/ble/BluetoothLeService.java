@@ -327,10 +327,6 @@ public class BluetoothLeService extends Service {
         }
         // This is specific to the accelerometer service.
         if (UUID_ACCELEROMETER_MEASUREMENT.equals(characteristic.getUuid())) {
-
-//            for (BluetoothGattDescriptor d: characteristic.getDescriptors()) {
-//                Log.d(TAG, String.format("%s:%s",d.getUuid(), d.getValue()));
-//            }
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                     UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
