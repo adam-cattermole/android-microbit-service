@@ -1,6 +1,6 @@
 # android-microbit-service
 
-Repository used for creating a android-microbit-service as part of a small project.
+Repository used for creating an android-microbit-service as part of a small project.
 
 The service will sit on an Android phone, reading data from a BLE device (micro:bit), and transferring the data over MQTT to a data pipeline.
 
