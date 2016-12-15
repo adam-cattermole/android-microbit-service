@@ -27,7 +27,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.*;
+import android.widget.LinearLayout;
+import android.widget.ListAdapter;
+import android.widget.SimpleAdapter;
+import android.widget.TextView;
 import com.example.android.bluetoothlegatt.R;
 import com.example.android.bluetoothlegatt.Utility;
 import com.example.android.bluetoothlegatt.ble.BluetoothLeService;
@@ -56,7 +59,6 @@ public class DeviceControlActivity extends Activity {
     //MqttVariable
     private MqttAndroidClient mMqttAndroidClient;
     private TextView mMqttConnectState;
-    private boolean mMqttConnected = false;
 
     //BLE Variables
     private TextView mBleConnectState;
@@ -68,7 +70,6 @@ public class DeviceControlActivity extends Activity {
     private TextView mButtonBData;
     private String mDeviceName;
     private String mDeviceAddress;
-//    private ExpandableListView mGattServicesList;
     private LinearLayout mGattServicesList;
     private ListAdapter mGattServicesListAdapter;
     private BluetoothLeService mBluetoothLeService;
@@ -126,21 +127,32 @@ public class DeviceControlActivity extends Activity {
 
                 // find accelerometer characteristic
                 boolean accelActive = false;
-                BluetoothGattCharacteristic accelCharacteristic = null;
-                BluetoothGattCharacteristic periodCharacteristic = null;
+                boolean tempActive = false;
+                boolean btnActive = false;
 
+                HashMap<String, BluetoothGattCharacteristic> characteristics = new HashMap<>();
+                // Finding all characteristics of services which are defined with a name in the GattAttributes class
+                // (characteristics which are known to us) and stored in an easy to access way
                 for (BluetoothGattService s: services) {
-                     if (s.getUuid().equals(UUID.fromString(GattAttributes.ACCELEROMETER_SERVICE))) {
-                         accelCharacteristic = s.getCharacteristic(UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT));
-                         periodCharacteristic = s.getCharacteristic(UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD));
-                         accelActive = true;
-                         break;
-                     }
+                    if (s.getUuid().equals(UUID.fromString(GattAttributes.ACCELEROMETER_SERVICE))) {
+                        accelActive = true;
+                    } else if (s.getUuid().equals(UUID.fromString(GattAttributes.TEMPERATURE_SERVICE))) {
+                        tempActive = true;
+                    } else if (s.getUuid().equals(UUID.fromString(GattAttributes.BUTTON_SERVICE))) {
+                        btnActive = true;
+                    }
+                    for (BluetoothGattCharacteristic c: s.getCharacteristics()) {
+                        String name = GattAttributes.lookup(c.getUuid().toString(), null);
+                        if (name != null) {
+                            characteristics.put(c.getUuid().toString(), c);
+                        }
+                    }
                 }
+
                 if (accelActive) {
                     // Set the accelerometer period to our defined value and read to check
-                    final BluetoothGattCharacteristic achar = accelCharacteristic;
-                    final BluetoothGattCharacteristic pchar = periodCharacteristic;
+                    final BluetoothGattCharacteristic achar = characteristics.get(GattAttributes.ACCELEROMETER_MEASUREMENT);
+                    final BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.ACCELEROMETER_PERIOD);
                     Log.d(TAG, "Accelerometer period set to "+SAMPLE_RATE+" ms");
                     mBluetoothLeService.writeCharacteristic(pchar, Utility.leBytesFromShort(SAMPLE_RATE));
                     Handler handler = new Handler();
@@ -162,31 +174,36 @@ public class DeviceControlActivity extends Activity {
 
                         }
                     }, 3000);
-
-                    //TODO: remove sampler if no longer in use
-//                    samplerThread = new SamplerThread(mBluetoothLeService, accelerometerCharacteristic);
-//                    samplerThread.start();
                 } else {
                     Log.d(TAG, "Accelerometer service not found");
+                }
+                if (tempActive) {
+                    //TODO: set notification period and enable notifications
+                }
+                if (btnActive) {
+                    //TODO: set notifications going for both buttons
                 }
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_MEASUREMENT)) {
                     float[] data = intent.getFloatArrayExtra(BluetoothLeService.EXTRA_DATA);
                     String strData = String.format(Locale.UK, "(%.3f,%.3f,%.3f)", data[0], data[1], data[2]);
-                    displayData(strData);
+                    displayData(mAccellData, strData);
                     publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
                 } else if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_PERIOD)) {
-                    displayPeriod(intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
+                    displayPeriod(mAccellPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT)) {
                     //TODO: do something with the temperature data
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_PERIOD)) {
                     //TODO: do something with the temp period
+                    displayPeriod(mTempPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
                     //TODO: publish button data
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
                     //TODO: publish button data
                 } else {
-                    displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                    // Our cases are specific - should know the data coming back is one of these categories, as that is
+                    // all we have requested
+                    Log.d(TAG, "Unknown data: "+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 }
             }
         }
@@ -199,8 +216,6 @@ public class DeviceControlActivity extends Activity {
             if (reconnect) {
                 Log.d(TAG, "MQTT reconnected: " + serverURI);
                 updateMqttConnectState(R.string.connected);
-                // Because Clean Session is true, we need to re-subscribe
-//                    subscribeToTopic();
             } else {
                 Log.d(TAG, "MQTT connected: " + serverURI);
                 updateMqttConnectState(R.string.connected);
@@ -224,45 +239,8 @@ public class DeviceControlActivity extends Activity {
         }
     };
 
-
-        //TODO: remove - no longer interact with gatt services manually
-//    // If a given GATT characteristic is selected, check for supported features.  This sample
-//    // demonstrates 'Read' and 'Notify' features.  See
-//    // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
-//    // list of supported characteristic features.
-//    private final ExpandableListView.OnChildClickListener servicesListClickListner =
-//            new ExpandableListView.OnChildClickListener() {
-//                @Override
-//                public boolean onChildClick(ExpandableListView parent, View v, int groupPosition,
-//                                            int childPosition, long id) {
-//                    if (mGattCharacteristics != null) {
-//                        final BluetoothGattCharacteristic characteristic =
-//                                mGattCharacteristics.get(groupPosition).get(childPosition);
-//                        final int charaProp = characteristic.getProperties();
-//                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
-//                            // If there is an active notification on a characteristic, clear
-//                            // it first so it doesn't update the data field on the user interface.
-//                            if (mNotifyCharacteristic != null) {
-//                                mBluetoothLeService.setCharacteristicNotification(
-//                                        mNotifyCharacteristic, false);
-//                                mNotifyCharacteristic = null;
-//                            }
-//                            mBluetoothLeService.readCharacteristic(characteristic);
-//                        }
-//                        if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
-//                            mNotifyCharacteristic = characteristic;
-//                            mBluetoothLeService.setCharacteristicNotification(
-//                                    characteristic, true);
-//                        }
-//                        return true;
-//                    }
-//                    return false;
-//                }
-//    };
-
     private void clearUI() {
         mGattServicesList.removeAllViews();
-//        mGattServicesList.setAdapter((SimpleExpandableListAdapter) null);
         mAccellData.setText(R.string.no_data);
         mAccellPeriod.setText(R.string.no_data);
     }
@@ -278,12 +256,15 @@ public class DeviceControlActivity extends Activity {
 
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(mDeviceAddress);
-//        mGattServicesList = (ExpandableListView) findViewById(R.id.gatt_services_list);
         mGattServicesList = (LinearLayout) findViewById(R.id.gatt_services_list);
-//        mGattServicesList.setOnChildClickListener(servicesListClickListner);
         mBleConnectState = (TextView) findViewById(R.id.ble_connect_state);
+
         mAccellData = (TextView) findViewById(R.id.accel_data_value);
         mAccellPeriod = (TextView) findViewById(R.id.accel_period_value);
+        mTempData = (TextView) findViewById(R.id.temp_data_value);
+        mTempPeriod = (TextView) findViewById(R.id.temp_period_value);
+        mButtonAData = (TextView) findViewById(R.id.btna_data_value);
+        mButtonBData = (TextView) findViewById(R.id.btnb_data_value);
 
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
@@ -304,7 +285,6 @@ public class DeviceControlActivity extends Activity {
             mqttConnectOptions.setAutomaticReconnect(true);
             mqttConnectOptions.setCleanSession(false);
             try {
-                //addToHistory("Connecting to " + serverUri);
                 mMqttAndroidClient.connect(mqttConnectOptions, null, new IMqttActionListener() {
                     @Override
                     public void onSuccess(IMqttToken asyncActionToken) {
@@ -314,7 +294,6 @@ public class DeviceControlActivity extends Activity {
                         disconnectedBufferOptions.setPersistBuffer(false);
                         disconnectedBufferOptions.setDeleteOldestMessages(false);
                         mMqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
-//                    subscribeToTopic();
                     }
 
                     @Override
@@ -411,15 +390,15 @@ public class DeviceControlActivity extends Activity {
         });
     }
 
-    private void displayData(String data) {
+    private void displayData(TextView textView, String data) {
         if (data != null) {
-            mAccellData.setText(data);
+            textView.setText(data);
         }
     }
 
-    private void displayPeriod(short period) {
+    private void displayPeriod(TextView textView, short period) {
         if (period > 0) {
-            mAccellPeriod.setText(String.format(Locale.UK,"%d ms", period));
+            textView.setText(String.format(Locale.UK,"%d ms", period));
         }
     }
 
