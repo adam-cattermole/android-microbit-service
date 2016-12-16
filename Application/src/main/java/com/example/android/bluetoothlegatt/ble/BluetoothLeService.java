@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+/*
+ * It should be noted that this file has been modified
+ */
+
 package com.example.android.bluetoothlegatt.ble;
 
 import android.app.Service;

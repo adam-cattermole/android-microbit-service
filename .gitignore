@@ -61,3 +61,6 @@ gradle-app.setting
 
 # Mac Desktop Store
 .DS_Store
+
+
+.idea/
