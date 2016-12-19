@@ -73,19 +73,6 @@ public class BluetoothLeService extends Service {
     public final static String BUTTON_B_MEASUREMENT =
             "com.example.bluetooth.le.BUTTON_B_MEASUREMENT";
 
-//    public final static UUID UUID_ACCELEROMETER_MEASUREMENT =
-//            UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT);
-//    public final static UUID UUID_ACCELEROMETER_PERIOD =
-//            UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD);
-//    public final static UUID UUID_TEMPERATURE_MEASUREMENT =
-//            UUID.fromString(GattAttributes.TEMPERATURE_MEASUREMENT);
-//    public final static UUID UUID_TEMPERATURE_PERIOD =
-//            UUID.fromString(GattAttributes.TEMPERATURE_PERIOD);
-//    public final static UUID UUID_BUTTON_A_MEASUREMENT =
-//            UUID.fromString(GattAttributes.BUTTON_A_MEASUREMENT);
-//    public final static UUID UUID_BUTTON_B_MEASUREMENT =
-//            UUID.fromString(GattAttributes.BUTTON_B_MEASUREMENT);
-
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -142,6 +129,7 @@ public class BluetoothLeService extends Service {
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
+//        Log.d(TAG, "data received from: "+characteristic.getUuid());
         if (UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(ACCELEROMETER_MEASUREMENT);
 
@@ -155,7 +143,7 @@ public class BluetoothLeService extends Service {
             short raw_x = Utility.shortFromLittleEndianBytes(x_bytes);
             short raw_y = Utility.shortFromLittleEndianBytes(y_bytes);
             short raw_z = Utility.shortFromLittleEndianBytes(z_bytes);
-            Log.d(TAG, "Accelerometer Data received: x=" + raw_x + " y=" + raw_y + " z=" + raw_z);
+//            Log.d(TAG, "Accelerometer Data received: x=" + raw_x + " y=" + raw_y + " z=" + raw_z);
 
             // range is -1024 : +1024
             // Starting with the LED display face up and level (perpendicular to gravity) and edge connector towards your body:
@@ -170,22 +158,32 @@ public class BluetoothLeService extends Service {
             intent.putExtra(EXTRA_DATA, accel_out);
         } else if (UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD).equals(characteristic.getUuid())) {
             intent.addCategory(ACCELEROMETER_PERIOD);
-            byte[] b = characteristic.getValue();
-            short period = Utility.shortFromLittleEndianBytes(b);
+            short period = Utility.shortFromLittleEndianBytes(characteristic.getValue());
             Log.d(TAG, "Accelerometer period: "+period);
             intent.putExtra(EXTRA_DATA, period);
         } else if (UUID.fromString(GattAttributes.TEMPERATURE_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(TEMPERATURE_MEASUREMENT);
-            //TODO: HANDLE TEMPERATURE MEASUREMENTS
+            byte[] b = characteristic.getValue();
+            String value = Integer.toString(Utility.byteToInteger(b[0]));
+            Log.d(TAG, "Temp Measurement: "+value);
+            intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.TEMPERATURE_PERIOD).equals(characteristic.getUuid())) {
             intent.addCategory(TEMPERATURE_PERIOD);
-            //TODO: HANDLE TEMPERATURE PERIOD
+            short period = Utility.shortFromLittleEndianBytes(characteristic.getValue());
+            Log.d(TAG, "Temperature period: "+period);
+            intent.putExtra(EXTRA_DATA, period);
         } else if (UUID.fromString(GattAttributes.BUTTON_A_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(BUTTON_A_MEASUREMENT);
-            //TODO: HANDLE BUTTON A DATA
+            byte[] b = characteristic.getValue();
+            String value = Integer.toString(Utility.byteToInteger(b[0]));
+            Log.d(TAG, "Button A data: "+value);
+            intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.BUTTON_B_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(BUTTON_B_MEASUREMENT);
-            //TODO: HANDLE BUTTON B DATA
+            byte[] b = characteristic.getValue();
+            String value = Integer.toString(Utility.byteToInteger(b[0]));
+            Log.d(TAG, "int version: "+Utility.byteToInteger(b[0]));
+            intent.putExtra(EXTRA_DATA, value);
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();

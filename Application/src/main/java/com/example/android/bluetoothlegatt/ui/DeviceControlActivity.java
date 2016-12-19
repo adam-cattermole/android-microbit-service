@@ -152,41 +152,80 @@ public class DeviceControlActivity extends Activity {
                         }
                     }
                 }
-
+                List<BluetoothGattCharacteristic> notifyCharacteristic = new ArrayList<>();
+                List<BluetoothGattCharacteristic> readCharacteristic = new ArrayList<>();
                 if (accelActive) {
                     // Set the accelerometer period to our defined value and read to check
-                    final BluetoothGattCharacteristic achar = characteristics.get(GattAttributes.ACCELEROMETER_MEASUREMENT);
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.ACCELEROMETER_MEASUREMENT));
                     final BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.ACCELEROMETER_PERIOD);
+                    readCharacteristic.add(pchar);
                     Log.d(TAG, "Accelerometer period set to "+SAMPLE_RATE+" ms");
                     mBluetoothLeService.writeCharacteristic(pchar, Utility.leBytesFromShort(SAMPLE_RATE));
-                    Handler handler = new Handler();
-                    // Delay the read so sufficient time has occurred to write
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Read the period in and display it to the user (may not be necessary)
-                            mBluetoothLeService.readCharacteristic(pchar);
-                        }
-                    }, 1000);
-                    // Delay the enabling of notifications so the device has finished writing and reading the period
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d(TAG, "Enabling notifications");
-                            // Enable notifications triggering data events
-                            mBluetoothLeService.setCharacteristicNotification(achar, true);
-
-                        }
-                    }, 3000);
+//                    Handler handler = new Handler();
+//                    // Delay the read so sufficient time has occurred to write
+//                    handler.postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            // Read the period in and display it to the user (may not be necessary)
+//                            mBluetoothLeService.readCharacteristic(pchar);
+//                        }
+//                    }, 1000);
+//                    // Delay the enabling of notifications so the device has finished writing and reading the period
+//                    handler.postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            Log.d(TAG, "Enabling notifications");
+//                            // Enable notifications triggering data events
+//                            mBluetoothLeService.setCharacteristicNotification(achar, true);
+//
+//                        }
+//                    }, 3000);
                 } else {
                     Log.d(TAG, "Accelerometer service not found");
                 }
                 if (tempActive) {
                     //TODO: set notification period and enable notifications
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.TEMPERATURE_MEASUREMENT));
+                    final BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.TEMPERATURE_PERIOD);
+                    readCharacteristic.add(pchar);
+                } else {
+                    Log.d(TAG, "Temperature service not found");
                 }
                 if (btnActive) {
                     //TODO: set notifications going for both buttons
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.BUTTON_A_MEASUREMENT));
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.BUTTON_B_MEASUREMENT));
+
+                } else {
+                    Log.d(TAG, "Button service not found");
                 }
+
+                // Reading all of the readChar characteristics with a delay to ensure there is significant time
+                // to read
+                Handler handler = new Handler();
+                int delay = 500;
+                for (final BluetoothGattCharacteristic c: readCharacteristic) {
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mBluetoothLeService.readCharacteristic(c);
+                        }
+                    }, delay);
+                    delay = delay + 100;
+                }
+
+                // Setting notifications for all added to the notify list
+                delay = 1000;
+                for (final BluetoothGattCharacteristic c: notifyCharacteristic) {
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            mBluetoothLeService.setCharacteristicNotification(c, true);
+                        }
+                    }, delay);
+                    delay = delay + 200;
+                }
+
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_MEASUREMENT)) {
                     float[] data = intent.getFloatArrayExtra(BluetoothLeService.EXTRA_DATA);
@@ -197,13 +236,16 @@ public class DeviceControlActivity extends Activity {
                     displayPeriod(mAccellPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT)) {
                     //TODO: do something with the temperature data
+                    displayData(mTempData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_PERIOD)) {
                     //TODO: do something with the temp period
                     displayPeriod(mTempPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
                     //TODO: publish button data
+                    displayData(mButtonAData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
                     //TODO: publish button data
+                    displayData(mButtonBData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 } else {
                     // Our cases are specific - should know the data coming back is one of these categories, as that is
                     // all we have requested
@@ -329,7 +371,7 @@ public class DeviceControlActivity extends Activity {
             final boolean result = mBluetoothLeService.connect(mDeviceAddress);
             Log.d(TAG, "Connect request result=" + result);
         }
-        mqttConnect();
+//        mqttConnect();
     }
 
     @Override
@@ -363,11 +405,11 @@ public class DeviceControlActivity extends Activity {
         switch(item.getItemId()) {
             case R.id.menu_connect:
                 mBluetoothLeService.connect(mDeviceAddress);
-                mqttConnect();
+//                mqttConnect();
                 return true;
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();
-                mqttDisconnect();
+//                mqttDisconnect();
                 return true;
             case android.R.id.home:
                 onBackPressed();
@@ -472,14 +514,21 @@ public class DeviceControlActivity extends Activity {
         // Additional categories
         intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_MEASUREMENT);
         intentFilter.addCategory(BluetoothLeService.ACCELEROMETER_PERIOD);
+        intentFilter.addCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT);
+        intentFilter.addCategory(BluetoothLeService.TEMPERATURE_PERIOD);
+        intentFilter.addCategory(BluetoothLeService.BUTTON_A_MEASUREMENT);
+        intentFilter.addCategory(BluetoothLeService.BUTTON_B_MEASUREMENT);
+
         return intentFilter;
     }
 
     public void publishMqttMessage(String topic, String message){
         try {
-            MqttMessage m = new MqttMessage();
-            m.setPayload(message.getBytes());
-            mMqttAndroidClient.publish(topic, m);
+            if (mMqttAndroidClient.isConnected()) {
+                MqttMessage m = new MqttMessage();
+                m.setPayload(message.getBytes());
+                mMqttAndroidClient.publish(topic, m);
+            }
 
 //            For some reason the buffer is set to null - could be worth figuring this out
 //            if (!mMqttAndroidClient.isConnected()) {

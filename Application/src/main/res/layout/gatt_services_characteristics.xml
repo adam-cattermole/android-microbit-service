@@ -193,7 +193,7 @@
                     android:id="@+id/btna_data_value"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/no_data"
+                    android:text="@string/no_data_btn"
                     android:textSize="18sp" />
             </LinearLayout>
 
@@ -217,7 +217,7 @@
                     android:id="@+id/btnb_data_value"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/no_data"
+                    android:text="@string/no_data_btn"
                     android:textSize="18sp" />
             </LinearLayout>
         </LinearLayout>
