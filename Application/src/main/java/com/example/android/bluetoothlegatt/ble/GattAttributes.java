@@ -40,6 +40,11 @@ public class GattAttributes {
     public static String BUTTON_B_MEASUREMENT ="e95dda91-251d-470a-a062-fa1922dfa9a8";
     public static String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
 
+    public static String MAGNETOMETER_SERVICE = "e95df2d8-251d-470a-a062-fa1922dfa9a8";
+    public static String MAGNETOMETER_MEASUREMENT = "e95dfb11-251d-470a-a062-fa1922dfa9a8";
+    public static String MAGNETOMETER_PERIOD = "e95d386c-251d-470a-a062-fa1922dfa9a8";
+    public static String MAGNETOMETER_BEARING = "e95d9715-251d-470a-a062-fa1922dfa9a8";
+
     static {
         // General Services
         attributes.put("00001800-0000-1000-8000-00805f9b34fb", "Generic Access Profile");
@@ -49,6 +54,7 @@ public class GattAttributes {
         attributes.put(ACCELEROMETER_SERVICE, "Accelerometer Service");
         attributes.put(TEMPERATURE_SERVICE, "Temperature Service");
         attributes.put(BUTTON_SERVICE, "Button Service");
+        attributes.put(MAGNETOMETER_SERVICE, "Magnetometer Service");
 
         // Accelerometer Characteristics
         attributes.put(ACCELEROMETER_MEASUREMENT, "Accelerometer Measurement");
@@ -59,6 +65,10 @@ public class GattAttributes {
         // Button Characteristics
         attributes.put(BUTTON_A_MEASUREMENT, "Button A Data");
         attributes.put(BUTTON_B_MEASUREMENT, "Button B Data");
+        // Magnetometer characteristics
+        attributes.put(MAGNETOMETER_MEASUREMENT, "Magnetometer Measurement");
+        attributes.put(MAGNETOMETER_PERIOD, "Magnetometer Period");
+        attributes.put(MAGNETOMETER_BEARING, "Magnetometer Bearing");
         // Client config
         attributes.put(CLIENT_CHARACTERISTIC_CONFIG, "Client Configuration Configuration Descriptor");
     }

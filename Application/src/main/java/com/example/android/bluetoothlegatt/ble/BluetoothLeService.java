@@ -72,6 +72,12 @@ public class BluetoothLeService extends Service {
             "com.example.bluetooth.le.BUTTON_A_MEASUREMENT";
     public final static String BUTTON_B_MEASUREMENT =
             "com.example.bluetooth.le.BUTTON_B_MEASUREMENT";
+    public final static String MAGNETOMETER_MEASUREMENT =
+            "com.example.bluetooth.le.MAGNETOMETER_MEASUREMENT";
+    public final static String MAGNETOMETER_PERIOD =
+            "com.example.bluetooth.le.MAGNETOMETER_PERIOD";
+    public final static String MAGNETOMETER_BEARING =
+            "com.example.bluetooth.le.MAGNETOMETER_BEARING";
 
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
@@ -184,6 +190,18 @@ public class BluetoothLeService extends Service {
             String value = Integer.toString(Utility.byteToInteger(b[0]));
             Log.d(TAG, "int version: "+Utility.byteToInteger(b[0]));
             intent.putExtra(EXTRA_DATA, value);
+        } else if (UUID.fromString(GattAttributes.MAGNETOMETER_MEASUREMENT).equals(characteristic.getUuid())) {
+            //TODO: handle magnetometer measurement data
+            intent.addCategory(MAGNETOMETER_MEASUREMENT);
+            Log.d(TAG, "Magnetometer measurement received");
+        } else if (UUID.fromString(GattAttributes.MAGNETOMETER_PERIOD).equals(characteristic.getUuid())) {
+            //TODO: handle magnetometer period data
+            intent.addCategory(MAGNETOMETER_PERIOD);
+            Log.d(TAG, "Magnetometer period received");
+        } else if (UUID.fromString(GattAttributes.MAGNETOMETER_BEARING).equals(characteristic.getUuid())) {
+            //TODO: handle magnetometer bearing data
+            intent.addCategory(MAGNETOMETER_BEARING);
+            Log.d(TAG, "Magnetometer bearing received");
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();

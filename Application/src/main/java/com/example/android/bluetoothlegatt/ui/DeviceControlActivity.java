@@ -133,6 +133,7 @@ public class DeviceControlActivity extends Activity {
                 boolean accelActive = false;
                 boolean tempActive = false;
                 boolean btnActive = false;
+                boolean magnetActive = false;
 
                 HashMap<String, BluetoothGattCharacteristic> characteristics = new HashMap<>();
                 // Finding all characteristics of services which are defined with a name in the GattAttributes class
@@ -144,6 +145,8 @@ public class DeviceControlActivity extends Activity {
                         tempActive = true;
                     } else if (s.getUuid().equals(UUID.fromString(GattAttributes.BUTTON_SERVICE))) {
                         btnActive = true;
+                    } else if (s.getUuid().equals(UUID.fromString(GattAttributes.MAGNETOMETER_SERVICE))) {
+                        magnetActive = true;
                     }
                     for (BluetoothGattCharacteristic c: s.getCharacteristics()) {
                         String name = GattAttributes.lookup(c.getUuid().toString(), null);
@@ -161,43 +164,33 @@ public class DeviceControlActivity extends Activity {
                     readCharacteristic.add(pchar);
                     Log.d(TAG, "Accelerometer period set to "+SAMPLE_RATE+" ms");
                     mBluetoothLeService.writeCharacteristic(pchar, Utility.leBytesFromShort(SAMPLE_RATE));
-//                    Handler handler = new Handler();
-//                    // Delay the read so sufficient time has occurred to write
-//                    handler.postDelayed(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            // Read the period in and display it to the user (may not be necessary)
-//                            mBluetoothLeService.readCharacteristic(pchar);
-//                        }
-//                    }, 1000);
-//                    // Delay the enabling of notifications so the device has finished writing and reading the period
-//                    handler.postDelayed(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            Log.d(TAG, "Enabling notifications");
-//                            // Enable notifications triggering data events
-//                            mBluetoothLeService.setCharacteristicNotification(achar, true);
-//
-//                        }
-//                    }, 3000);
                 } else {
                     Log.d(TAG, "Accelerometer service not found");
                 }
                 if (tempActive) {
-                    //TODO: set notification period and enable notifications
                     notifyCharacteristic.add(characteristics.get(GattAttributes.TEMPERATURE_MEASUREMENT));
-                    final BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.TEMPERATURE_PERIOD);
+                    BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.TEMPERATURE_PERIOD);
                     readCharacteristic.add(pchar);
+                    // if we want to update the period set it here
+                    //TODO: change sample rate?
                 } else {
                     Log.d(TAG, "Temperature service not found");
                 }
                 if (btnActive) {
-                    //TODO: set notifications going for both buttons
                     notifyCharacteristic.add(characteristics.get(GattAttributes.BUTTON_A_MEASUREMENT));
                     notifyCharacteristic.add(characteristics.get(GattAttributes.BUTTON_B_MEASUREMENT));
-
                 } else {
                     Log.d(TAG, "Button service not found");
+                }
+                if (magnetActive) {
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.MAGNETOMETER_MEASUREMENT));
+                    notifyCharacteristic.add(characteristics.get(GattAttributes.MAGNETOMETER_BEARING));
+                    BluetoothGattCharacteristic pchar = characteristics.get(GattAttributes.MAGNETOMETER_PERIOD);
+                    readCharacteristic.add(pchar);
+                    // If the sample rate should be changed for magnetometer, do it here
+                    //TODO: change sample rate?
+                } else {
+                    Log.d(TAG, "Magnetometer service not found");
                 }
 
                 // Reading all of the readChar characteristics with a delay to ensure there is significant time
@@ -235,17 +228,25 @@ public class DeviceControlActivity extends Activity {
                 } else if (intent.hasCategory(BluetoothLeService.ACCELEROMETER_PERIOD)) {
                     displayPeriod(mAccellPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT)) {
-                    //TODO: do something with the temperature data
-                    displayData(mTempData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                    String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                    displayData(mTempData, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_PERIOD)) {
-                    //TODO: do something with the temp period
                     displayPeriod(mTempPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
-                    //TODO: publish button data
-                    displayData(mButtonAData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                    String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                    displayData(mButtonAData, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
-                    //TODO: publish button data
-                    displayData(mButtonBData, intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                    String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+                    displayData(mButtonBData, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
+                } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_MEASUREMENT)) {
+                    //TODO: display and publish data
+                } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_PERIOD)) {
+                    //TODO: display data
+                } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_BEARING)) {
+                    // TODO: find out what format bearing data is, display/publish?
                 } else {
                     // Our cases are specific - should know the data coming back is one of these categories, as that is
                     // all we have requested
