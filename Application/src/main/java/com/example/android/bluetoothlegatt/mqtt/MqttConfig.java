@@ -10,4 +10,5 @@ public class MqttConfig {
     public static final String TOPIC_ACCELEROMETER = "TOPIC_ACCELEROMETER";
     public static final String TOPIC_BUTTON = "TOPIC_BUTTON";
     public static final String TOPIC_TEMPERATURE = "TOPIC_TEMPERATURE";
+    public static final String TOPIC_MAGNETOMETER = "TOPIC_MAGNETOMETER";
 }

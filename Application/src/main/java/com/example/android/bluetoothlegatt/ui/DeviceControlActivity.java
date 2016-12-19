@@ -230,17 +230,17 @@ public class DeviceControlActivity extends Activity {
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mTempData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_TEMPERATURE, strData);
                 } else if (intent.hasCategory(BluetoothLeService.TEMPERATURE_PERIOD)) {
                     displayPeriod(mTempPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mButtonAData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, strData);
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mButtonBData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_ACCELEROMETER, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, strData);
                 } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_MEASUREMENT)) {
                     //TODO: display and publish data
                 } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_PERIOD)) {
