@@ -178,7 +178,7 @@ public class BluetoothLeService extends Service {
             intent.addCategory(BUTTON_B_MEASUREMENT);
             byte[] b = characteristic.getValue();
             String value = Integer.toString(Utility.byteToInteger(b[0]));
-            Log.d(TAG, "int version: "+Utility.byteToInteger(b[0]));
+            Log.d(TAG, "Button B data: "+value);
             intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.MAGNETOMETER_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(MAGNETOMETER_MEASUREMENT);
@@ -192,7 +192,6 @@ public class BluetoothLeService extends Service {
             Log.d(TAG, "Magnetometer period: "+period);
             intent.putExtra(EXTRA_DATA, period);
         } else if (UUID.fromString(GattAttributes.MAGNETOMETER_BEARING).equals(characteristic.getUuid())) {
-            //TODO: handle magnetometer bearing data
             intent.addCategory(MAGNETOMETER_BEARING);
             byte[] bearing_bytes = new byte[2];
             System.arraycopy(characteristic.getValue(), 0, bearing_bytes, 0, 2);

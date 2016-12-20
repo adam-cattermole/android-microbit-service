@@ -61,6 +61,7 @@ public class DeviceControlActivity extends Activity {
     //MqttVariable
     private MqttAndroidClient mMqttAndroidClient;
     private TextView mMqttConnectState;
+    private boolean mMqttConnected = false;
 
     //BLE Variables
     private TextView mBleConnectState;
@@ -203,7 +204,6 @@ public class DeviceControlActivity extends Activity {
                 int delay = 500;
                 for (int i = 0; i < readCharacteristic.size(); i++) {
                     final int pos = i;
-//                for (final BluetoothGattCharacteristic c: readCharacteristic) {
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -222,7 +222,6 @@ public class DeviceControlActivity extends Activity {
                 delay = 1000;
                 for (int i = 0; i < notifyCharacteristic.size(); i++) {
                     final int pos = i;
-//                for (final BluetoothGattCharacteristic c: notifyCharacteristic) {
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
@@ -263,23 +262,23 @@ public class DeviceControlActivity extends Activity {
                 else if (intent.hasCategory(BluetoothLeService.BUTTON_A_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mButtonAData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, "A_"+strData);
                 } else if (intent.hasCategory(BluetoothLeService.BUTTON_B_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mButtonBData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_BUTTON, "B_"+strData);
                 }
                 // MAGNETOMETER HANDLERS
                 else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_MEASUREMENT)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mMagnData, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_MAGNETOMETER, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_MAGNETOMETER_DATA, strData);
                 } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_PERIOD)) {
                     displayPeriod(mMagnPeriod, intent.getShortExtra(BluetoothLeService.EXTRA_DATA, (short) 0));
                 } else if (intent.hasCategory(BluetoothLeService.MAGNETOMETER_BEARING)) {
                     String strData = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
                     displayData(mMagnBearing, strData);
-                    publishMqttMessage(MqttConfig.TOPIC_MAGNETOMETER, strData);
+                    publishMqttMessage(MqttConfig.TOPIC_MAGNETOMETER_BEARING, strData);
                 } else {
                     // Our cases are specific - should know the data coming back is one of these categories, as that is
                     // all we have requested
@@ -292,6 +291,7 @@ public class DeviceControlActivity extends Activity {
     private final MqttCallbackExtended mMqttCallbackExtended = new MqttCallbackExtended() {
         @Override
         public void connectComplete(boolean reconnect, String serverURI) {
+            mMqttConnected = true;
             if (reconnect) {
                 Log.d(TAG, "MQTT reconnected: " + serverURI);
                 updateMqttConnectState(R.string.connected);
@@ -303,6 +303,7 @@ public class DeviceControlActivity extends Activity {
 
         @Override
         public void connectionLost(Throwable cause) {
+            mMqttConnected = false;
             Log.d(TAG, "MQTT disconnected: " + MqttConfig.SERVER_URI);
             updateMqttConnectState(R.string.disconnected);
         }
@@ -358,7 +359,7 @@ public class DeviceControlActivity extends Activity {
         mMqttButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (mMqttAndroidClient.isConnected()) {
+                if (mMqttConnected) {
                     mqttDisconnect();
                 } else {
                     mqttConnect();
@@ -384,7 +385,7 @@ public class DeviceControlActivity extends Activity {
 
 
     public void mqttConnect() {
-        if (!mMqttAndroidClient.isConnected()) {
+        if (!mMqttConnected) {
             MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
             mqttConnectOptions.setAutomaticReconnect(true);
             mqttConnectOptions.setCleanSession(false);
@@ -394,9 +395,9 @@ public class DeviceControlActivity extends Activity {
                     public void onSuccess(IMqttToken asyncActionToken) {
                         DisconnectedBufferOptions disconnectedBufferOptions = new DisconnectedBufferOptions();
                         disconnectedBufferOptions.setBufferEnabled(true);
-                        disconnectedBufferOptions.setBufferSize(100);
+                        disconnectedBufferOptions.setBufferSize(5000);
                         disconnectedBufferOptions.setPersistBuffer(false);
-                        disconnectedBufferOptions.setDeleteOldestMessages(false);
+                        disconnectedBufferOptions.setDeleteOldestMessages(true);
                         mMqttAndroidClient.setBufferOpts(disconnectedBufferOptions);
                     }
 
@@ -412,9 +413,10 @@ public class DeviceControlActivity extends Activity {
     }
 
     public void mqttDisconnect() {
-        if (mMqttAndroidClient.isConnected()) {
+        if (mMqttConnected) {
             try {
-                mMqttAndroidClient.disconnect();
+                mMqttConnected = false;
+                mMqttAndroidClient.disconnect(0);
             } catch (MqttException ex) {
                 ex.printStackTrace();
             }
@@ -479,12 +481,11 @@ public class DeviceControlActivity extends Activity {
         switch(item.getItemId()) {
             case R.id.menu_connect:
                 mBluetoothLeService.connect(mDeviceAddress);
-//                mqttConnect();
                 return true;
             case R.id.menu_disconnect:
                 mSetupComplete = false;
                 mBluetoothLeService.disconnect();
-//                mqttDisconnect();
+                mqttDisconnect();
                 return true;
             case android.R.id.home:
                 onBackPressed();
@@ -508,9 +509,9 @@ public class DeviceControlActivity extends Activity {
             public void run() {
                 mMqttConnectState.setText(resourceId);
                 if (resourceId == R.string.connected) {
-                    mMqttButton.setText(R.string.menu_connect);
-                } else {
                     mMqttButton.setText(R.string.menu_disconnect);
+                } else {
+                    mMqttButton.setText(R.string.menu_connect);
                 }
 
             }
@@ -610,7 +611,7 @@ public class DeviceControlActivity extends Activity {
 
     public void publishMqttMessage(String topic, String message){
         try {
-            if (mMqttAndroidClient.isConnected()) {
+            if (mMqttConnected) {
                 MqttMessage m = new MqttMessage();
                 m.setPayload(message.getBytes());
                 mMqttAndroidClient.publish(topic, m);
