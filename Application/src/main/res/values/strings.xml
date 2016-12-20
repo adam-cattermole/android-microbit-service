@@ -35,7 +35,9 @@
     <string name="label_temp_period">T_Period:</string>
     <string name="label_btna_data">Btn_A_Data:</string>
     <string name="label_btnb_data">Btn_B_Data:</string>
-    <string name="no_data_btn">0</string>
+    <string name="label_magn_data">M_Data:</string>
+    <string name="label_magn_period">M_Period:</string>
+    <string name="label_magn_bearing">M_Bearing:</string>
 
     <!-- MQTT Strings -->
     <string name="label_server_address">Server URL:</string>

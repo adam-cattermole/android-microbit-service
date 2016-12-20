@@ -25,11 +25,14 @@ import android.bluetooth.*;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.Log;
 import com.example.android.bluetoothlegatt.Utility;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -90,10 +93,11 @@ public class BluetoothLeService extends Service {
                 mConnectionState = STATE_CONNECTED;
                 broadcastUpdate(intentAction);
                 Log.i(TAG, "Connected to GATT server.");
-                // Attempts to discover services after successful connection.
+                // Attempts to discover services after successful connection. Delayed by 2 sec due to caching bug
+                // https://devzone.nordicsemi.com/question/22751/nrftoobox-on-android-not-recognizing-changes-in-application-type-running-on-nordic-pcb/
+                SystemClock.sleep(2000);
                 Log.i(TAG, "Attempting to start service discovery:" +
                         mBluetoothGatt.discoverServices());
-
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 intentAction = ACTION_GATT_DISCONNECTED;
                 mConnectionState = STATE_DISCONNECTED;
@@ -139,29 +143,15 @@ public class BluetoothLeService extends Service {
         if (UUID.fromString(GattAttributes.ACCELEROMETER_MEASUREMENT).equals(characteristic.getUuid())) {
             intent.addCategory(ACCELEROMETER_MEASUREMENT);
 
-            byte[] b = characteristic.getValue();
-            byte[] x_bytes = new byte[2];
-            byte[] y_bytes = new byte[2];
-            byte[] z_bytes = new byte[2];
-            System.arraycopy(b, 0, x_bytes, 0, 2);
-            System.arraycopy(b, 2, y_bytes, 0, 2);
-            System.arraycopy(b, 4, z_bytes, 0, 2);
-            short raw_x = Utility.shortFromLittleEndianBytes(x_bytes);
-            short raw_y = Utility.shortFromLittleEndianBytes(y_bytes);
-            short raw_z = Utility.shortFromLittleEndianBytes(z_bytes);
-//            Log.d(TAG, "Accelerometer Data received: x=" + raw_x + " y=" + raw_y + " z=" + raw_z);
-
             // range is -1024 : +1024
             // Starting with the LED display face up and level (perpendicular to gravity) and edge connector towards your body:
             // A negative X value means tilting left, a positive X value means tilting right
             // A negative Y value means tilting away from you, a positive Y value means tilting towards you
             // A negative Z value means ?
-            float[] accel_out = new float[3];
-            accel_out[0] = raw_x / 1000f;
-            accel_out[1] = raw_y / 1000f;
-            accel_out[2] = raw_z / 1000f;
-            Log.d(TAG, "Accelerometer data converted: x=" + accel_out[0] + " y=" + accel_out[1] + " z=" + accel_out[2]);
-            intent.putExtra(EXTRA_DATA, accel_out);
+            float[] accel_out = Utility.byteInputToFloat(characteristic.getValue());
+            String value = String.format(Locale.UK, "(%.3f,%.3f,%.3f)", accel_out[0], accel_out[1], accel_out[2]);
+            Log.d(TAG, "Accelerometer data converted: "+value);
+            intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.ACCELEROMETER_PERIOD).equals(characteristic.getUuid())) {
             intent.addCategory(ACCELEROMETER_PERIOD);
             short period = Utility.shortFromLittleEndianBytes(characteristic.getValue());
@@ -191,17 +181,25 @@ public class BluetoothLeService extends Service {
             Log.d(TAG, "int version: "+Utility.byteToInteger(b[0]));
             intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.MAGNETOMETER_MEASUREMENT).equals(characteristic.getUuid())) {
-            //TODO: handle magnetometer measurement data
             intent.addCategory(MAGNETOMETER_MEASUREMENT);
-            Log.d(TAG, "Magnetometer measurement received");
+            float[] magn_out = Utility.byteInputToFloat(characteristic.getValue());
+            String value = String.format(Locale.UK, "(%.3f,%.3f,%.3f)", magn_out[0], magn_out[1], magn_out[2]);
+            Log.d(TAG, "Magnetometer data converted: "+value);
+            intent.putExtra(EXTRA_DATA, value);
         } else if (UUID.fromString(GattAttributes.MAGNETOMETER_PERIOD).equals(characteristic.getUuid())) {
-            //TODO: handle magnetometer period data
             intent.addCategory(MAGNETOMETER_PERIOD);
-            Log.d(TAG, "Magnetometer period received");
+            short period = Utility.shortFromLittleEndianBytes(characteristic.getValue());
+            Log.d(TAG, "Magnetometer period: "+period);
+            intent.putExtra(EXTRA_DATA, period);
         } else if (UUID.fromString(GattAttributes.MAGNETOMETER_BEARING).equals(characteristic.getUuid())) {
             //TODO: handle magnetometer bearing data
             intent.addCategory(MAGNETOMETER_BEARING);
-            Log.d(TAG, "Magnetometer bearing received");
+            byte[] bearing_bytes = new byte[2];
+            System.arraycopy(characteristic.getValue(), 0, bearing_bytes, 0, 2);
+            short bearing = Utility.shortFromLittleEndianBytes(bearing_bytes);
+            String out = String.format(Locale.UK, "%s - %d",Utility.compassBearing(bearing), bearing);
+            Log.d(TAG, "Magnetometer bearing: " + out);
+            intent.putExtra(EXTRA_DATA, out);
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
@@ -377,7 +375,8 @@ public class BluetoothLeService extends Service {
         // This is specific to the microbit services
         if (serviceUUID.equals(UUID.fromString(GattAttributes.ACCELEROMETER_SERVICE)) ||
                 serviceUUID.equals(UUID.fromString(GattAttributes.TEMPERATURE_SERVICE)) ||
-                serviceUUID.equals(UUID.fromString(GattAttributes.BUTTON_SERVICE))) {
+                serviceUUID.equals(UUID.fromString(GattAttributes.BUTTON_SERVICE)) ||
+                serviceUUID.equals(UUID.fromString(GattAttributes.MAGNETOMETER_SERVICE))) {
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
                     UUID.fromString(GattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
@@ -396,5 +395,9 @@ public class BluetoothLeService extends Service {
         if (mBluetoothGatt == null) return null;
 
         return mBluetoothGatt.getServices();
+    }
+
+    public boolean discoverServices() {
+        return mBluetoothGatt.discoverServices();
     }
 }

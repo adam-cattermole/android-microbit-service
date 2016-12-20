@@ -8,6 +8,7 @@ import java.nio.ByteOrder;
  */
 public class Utility {
 
+    private final static String[] directions = {"N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"};
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
     public static short shortFromLittleEndianBytes(byte[] b) {
         return ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN).getShort();
@@ -29,5 +30,23 @@ public class Utility {
 
     public static int byteToInteger(byte b) {
         return b & 0xFF;
+    }
+
+    public static float[] byteInputToFloat(byte[] b) {
+        byte[] x_bytes = new byte[2];
+        byte[] y_bytes = new byte[2];
+        byte[] z_bytes = new byte[2];
+        System.arraycopy(b, 0, x_bytes, 0, 2);
+        System.arraycopy(b, 2, y_bytes, 0, 2);
+        System.arraycopy(b, 4, z_bytes, 0, 2);
+        float[] out = new float[3];
+        out[0] = shortFromLittleEndianBytes(x_bytes) / 1000f;
+        out[1] = shortFromLittleEndianBytes(y_bytes) / 1000f;
+        out[2] = shortFromLittleEndianBytes(z_bytes) / 1000f;
+        return out;
+    }
+
+    public static String compassBearing(short bearing) {
+        return directions[ (int) Math.round((((double) bearing % 360) / 45)) ];
     }
 }

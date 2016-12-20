@@ -52,7 +52,8 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".ui.DeviceControlActivity"/>
+        <activity android:name=".ui.DeviceControlActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"/>
         <!-- BLE Service -->
         <service android:name=".ble.BluetoothLeService" android:enabled="true"/>
         <!-- Mqtt Service -->
